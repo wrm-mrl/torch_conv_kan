@@ -36,9 +36,6 @@ This project introduces and demonstrates the training, validation, and quantizat
 - ✅ [2024/06/20] :fire::fire::fire:**New pretrained checkpoint on Imagenet1k are released**:fire::fire::fire: VGG11 style with Bottleneck Gram Convolutions. The model achieves 68.5% Top1 accuracy on Imagenet1k validation set with only 7.25M parameters.
 
 - ✅ [2024/07/02] :fire::fire::fire: We released our paper :fire::fire::fire: [Kolmogorov-Arnold Convolutions: Design Principles and Empirical Studies](https://arxiv.org/abs/2407.01092)
-
-- ✅ [2024/07/09] PEFT code for KAGN models are released, as well as new RDNet-like models, better implementation of Kolmogorov-Arnold-Gram concolutions, and medical images segmentation scripts.
-
 ### TODO list and next steps
 
 - Right now VGG19-like model is training on Imagenet1k

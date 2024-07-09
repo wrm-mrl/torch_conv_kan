@@ -1,6 +1,6 @@
 import torch
 import torch.nn as nn
-from kans import RadialBasisFunction
+from torch_conv_kan.kans import RadialBasisFunction
 
 
 class FastKANConvNDLayer(nn.Module):

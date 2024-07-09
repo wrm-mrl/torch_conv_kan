@@ -1,9 +1,9 @@
 import torch
 import torch.nn as nn
 
-from kan_convs import WavKANConv2DLayer
-from kans import WavKAN
-from utils import L1
+from torch_conv_kan.kan_convs import WavKANConv2DLayer
+from torch_conv_kan.kans import WavKAN
+from torch_conv_kan.utils import L1
 
 
 class SimpleConvWavKAN(nn.Module):

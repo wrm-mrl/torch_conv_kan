@@ -19,4 +19,3 @@ albumentations
 optuna @ git+https://github.com/optuna/optuna
 ray[tune]
 medpy
-timm

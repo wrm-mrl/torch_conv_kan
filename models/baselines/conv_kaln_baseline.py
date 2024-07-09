@@ -1,9 +1,9 @@
 import torch
 import torch.nn as nn
 
-from kan_convs import KALNConv2DLayer
-from kans import KALN
-from utils import L1
+from torch_conv_kan.kan_convs import KALNConv2DLayer
+from torch_conv_kan.kans import KALN
+from torch_conv_kan.utils import L1
 
 
 class SimpleConvKALN(nn.Module):

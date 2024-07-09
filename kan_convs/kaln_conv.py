@@ -8,7 +8,7 @@ from torch.nn.functional import conv3d, conv2d, conv1d
 class KALNConvNDLayer(nn.Module):
     def __init__(self, conv_class, norm_class, conv_w_fun, input_dim, output_dim, degree, kernel_size,
                  groups=1, padding=0, stride=1, dilation=1, dropout: float = 0.0,
-                 ndim: int = 2, **norm_kwargs):
+                 ndim: int = 2, device='cuda', **norm_kwargs):
         super(KALNConvNDLayer, self).__init__()
         self.inputdim = input_dim
         self.outdim = output_dim
@@ -23,6 +23,7 @@ class KALNConvNDLayer(nn.Module):
         self.ndim = ndim
         self.dropout = None
         self.norm_kwargs = norm_kwargs
+        self.device = device
         if dropout > 0:
             if ndim == 1:
                 self.dropout = nn.Dropout1d(p=dropout)
@@ -45,9 +46,10 @@ class KALNConvNDLayer(nn.Module):
                                                    padding,
                                                    dilation,
                                                    groups=1,
-                                                   bias=False) for _ in range(groups)])
+                                                   bias=False,
+                                                   device=device) for _ in range(groups)])
 
-        self.layer_norm = nn.ModuleList([norm_class(output_dim // groups, **norm_kwargs) for _ in range(groups)])
+        self.layer_norm = nn.ModuleList([norm_class(output_dim // groups, device=device, **norm_kwargs) for _ in range(groups)])
 
         poly_shape = (groups, output_dim // groups, (input_dim // groups) * (degree + 1)) + tuple(
             kernel_size for _ in range(ndim))
@@ -90,13 +92,14 @@ class KALNConvNDLayer(nn.Module):
         legendre_basis = self.compute_legendre_polynomials(x_normalized, self.degree)
         # Reshape legendre_basis to match the expected input dimensions for linear transformation
         # Compute polynomial output using polynomial weights
-        poly_output = self.conv_w_fun(legendre_basis, self.poly_weights[group_index],
+        poly_output = self.conv_w_fun(legendre_basis, self.poly_weights[group_index].to(self.device),
                                       stride=self.stride, dilation=self.dilation,
                                       padding=self.padding, groups=1)
 
         # poly_output = poly_output.view(orig_shape[0], orig_shape[1], orig_shape[2], orig_shape[3], self.outdim // self.groups)
         # Combine base and polynomial outputs, normalize, and activate
         x = base_output + poly_output
+        x = x.to(self.device)
         if isinstance(self.layer_norm[group_index], nn.LayerNorm):
             orig_shape = x.shape
             x = self.layer_norm[group_index](x.view(orig_shape[0], -1)).view(orig_shape)

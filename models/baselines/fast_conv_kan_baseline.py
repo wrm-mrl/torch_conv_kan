@@ -1,9 +1,9 @@
 import torch
 import torch.nn as nn
 
-from kan_convs import FastKANConv2DLayer
-from kans import FastKAN
-from utils import L1
+from torch_conv_kan.kan_convs import FastKANConv2DLayer
+from torch_conv_kan.kans import FastKAN
+from torch_conv_kan.utils import L1
 
 
 class SimpleFastConvKAN(nn.Module):
