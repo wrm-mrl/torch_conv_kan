@@ -217,7 +217,7 @@ class U2KANet(nn.Module):
         del hx6up, hx5dup, hx4dup, hx3dup, hx2dup
         """
 
-        return d0, d1, d2, d3, d4, d5, d6
+        return d0
 
 
 class U2KANetSmall(nn.Module):
