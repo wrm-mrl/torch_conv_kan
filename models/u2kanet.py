@@ -99,7 +99,7 @@ class ResidualUNetBaseF(nn.Module):
 
 
 class U2KANet(nn.Module):
-    def __init__(self, conv_func, conf_fun_first, in_ch: int = 3, out_ch: int = 1, width_factor: int = 1):
+    def __init__(self, conv_func, conf_fun_first, in_ch: int = 3, out_ch: int = 1, width_factor: int = 1, device='cuda'):
         super(U2KANet, self).__init__()
 
         # ResidualUNetBase(self, conv_func, depth: int = 7, in_ch: int = 3, mid_ch: int = 12, out_ch: int = 3):
@@ -140,14 +140,14 @@ class U2KANet(nn.Module):
         self.stage1d = ResidualUNetBase(conv_func, depth=7, in_ch=32 * width_factor, mid_ch=4 * width_factor,
                                         out_ch=16 * width_factor)
 
-        self.side1 = nn.Conv2d(16 * width_factor, out_ch, 3, padding=1)
-        self.side2 = nn.Conv2d(16 * width_factor, out_ch, 3, padding=1)
-        self.side3 = nn.Conv2d(32 * width_factor, out_ch, 3, padding=1)
-        self.side4 = nn.Conv2d(64 * width_factor, out_ch, 3, padding=1)
-        self.side5 = nn.Conv2d(128 * width_factor, out_ch, 3, padding=1)
-        self.side6 = nn.Conv2d(128 * width_factor, out_ch, 3, padding=1)
+        self.side1 = nn.Conv2d(16 * width_factor, out_ch, 3, padding=1, device=device)
+        self.side2 = nn.Conv2d(16 * width_factor, out_ch, 3, padding=1, device=device)
+        self.side3 = nn.Conv2d(32 * width_factor, out_ch, 3, padding=1, device=device)
+        self.side4 = nn.Conv2d(64 * width_factor, out_ch, 3, padding=1, device=device)
+        self.side5 = nn.Conv2d(128 * width_factor, out_ch, 3, padding=1, device=device)
+        self.side6 = nn.Conv2d(128 * width_factor, out_ch, 3, padding=1, device=device)
 
-        self.outconv = nn.Conv2d(6 * out_ch, out_ch, 1)
+        self.outconv = nn.Conv2d(16 * width_factor, out_ch, 1, device=device) #nn.Conv2d(6 * out_ch, out_ch, 1, device=device)
 
     def forward(self, x, **kwargs):
         hx = x
@@ -192,24 +192,24 @@ class U2KANet(nn.Module):
         hx1d = self.stage1d(torch.cat((hx2dup, hx1), 1))
 
         # side output
-        d1 = self.side1(hx1d)
+        # d1 = self.side1(hx1d)
 
-        d2 = self.side2(hx2d)
-        d2 = _upsample_like(d2, d1)
+        # d2 = self.side2(hx2d)
+        # d2 = _upsample_like(d2, d1)
 
-        d3 = self.side3(hx3d)
-        d3 = _upsample_like(d3, d1)
+        # d3 = self.side3(hx3d)
+        # d3 = _upsample_like(d3, d1)
 
-        d4 = self.side4(hx4d)
-        d4 = _upsample_like(d4, d1)
+        # d4 = self.side4(hx4d)
+        # d4 = _upsample_like(d4, d1)
 
-        d5 = self.side5(hx5d)
-        d5 = _upsample_like(d5, d1)
+        # d5 = self.side5(hx5d)
+        # d5 = _upsample_like(d5, d1)
 
-        d6 = self.side6(hx6)
-        d6 = _upsample_like(d6, d1)
+        # d6 = self.side6(hx6)
+        # d6 = _upsample_like(d6, d1)
 
-        d0 = self.outconv(torch.cat((d1, d2, d3, d4, d5, d6), 1))
+        # d0 = self.outconv(torch.cat((d1, d2, d3, d4, d5, d6), 1))
 
         """
         del hx1, hx2, hx3, hx4, hx5, hx6
@@ -217,7 +217,85 @@ class U2KANet(nn.Module):
         del hx6up, hx5dup, hx4dup, hx3dup, hx2dup
         """
 
-        return d0, d1, d2, d3, d4, d5, d6
+        return self.outconv(hx1d)
+
+class U2KANetPlusPlus(nn.Module):
+    def __init__(self, conv_func, conf_fun_first, in_ch: int = 3, out_ch: int = 1, width_factor: int = 1):
+        super(U2KANetPlusPlus, self).__init__()
+
+        self.pool = nn.MaxPool2d(2, stride=2, ceil_mode=True)
+        self.stage1 = ResidualUNetBase(conv_func, conf_fun_first=conf_fun_first, depth=7, in_ch=in_ch,
+                                       mid_ch=4 * width_factor, out_ch=16 * width_factor)
+        self.stage2 = ResidualUNetBase(conv_func, depth=6, in_ch=16 * width_factor, mid_ch=4 * width_factor,
+                                       out_ch=16 * width_factor)
+        self.stage3 = ResidualUNetBase(conv_func, depth=5, in_ch=16 * width_factor, mid_ch=4 * width_factor,
+                                       out_ch=16 * width_factor)
+        self.stage4 = ResidualUNetBase(conv_func, depth=4, in_ch=16 * width_factor, mid_ch=4 * width_factor,
+                                       out_ch=16 * width_factor)
+        self.stage5 = ResidualUNetBaseF(conv_func, depth=4, in_ch=16 * width_factor, mid_ch=4 * width_factor,
+                                        out_ch=16 * width_factor)
+        self.stage6 = ResidualUNetBaseF(conv_func, depth=4, in_ch=16 * width_factor, mid_ch=4 * width_factor,
+                                        out_ch=16 * width_factor)
+
+        self.stage5d = ResidualUNetBase(conv_func, depth=7, in_ch=32 * width_factor, mid_ch=4 * width_factor,
+                                         out_ch=16 * width_factor)
+        self.stage4d = ResidualUNetBase(conv_func, depth=6, in_ch=32 * width_factor, mid_ch=4 * width_factor,
+                                        out_ch=16 * width_factor)
+        self.stage3d = ResidualUNetBase(conv_func, depth=5, in_ch=32 * width_factor, mid_ch=4 * width_factor,
+                                        out_ch=16 * width_factor)
+        self.stage2d = ResidualUNetBase(conv_func, depth=4, in_ch=32 * width_factor, mid_ch=4 * width_factor,
+                                        out_ch=16 * width_factor)
+        self.stage1d = ResidualUNetBaseF(conv_func, depth=4, in_ch=32 * width_factor, mid_ch=4 * width_factor,
+                                        out_ch=16 * width_factor)
+        
+        self.x_02 = ResidualUNetBaseF(conv_func, depth=4, in_ch=48 * width_factor, mid_ch=4 * width_factor, out_ch=16 * width_factor)
+        self.x_12 = ResidualUNetBaseF(conv_func, depth=4, in_ch=48 * width_factor, mid_ch=4 * width_factor, out_ch=16 * width_factor)
+        self.x_22 = ResidualUNetBaseF(conv_func, depth=4, in_ch=48 * width_factor, mid_ch=4 * width_factor, out_ch=16 * width_factor)
+        self.x_03 = ResidualUNetBaseF(conv_func, depth=4, in_ch=64 * width_factor, mid_ch=4 * width_factor, out_ch=16 * width_factor)
+        self.x_13 = ResidualUNetBaseF(conv_func, depth=4, in_ch=64 * width_factor, mid_ch=4 * width_factor, out_ch=16 * width_factor)
+        self.x_04 = ResidualUNetBaseF(conv_func, depth=4, in_ch=80 * width_factor, mid_ch=4 * width_factor, out_ch=16 * width_factor)
+
+        self.out = nn.Conv2d(16 * width_factor, out_ch, 1)
+
+    def forward(self, x):
+        hx = x
+
+        # stage 1
+        hx1 = self.stage1(hx)
+        hx = self.pool(hx1)
+
+        # stage 2
+        hx2 = self.stage2(hx)
+        hx = self.pool(hx2)
+
+        # stage 3
+        hx3 = self.stage3(hx)
+        hx = self.pool(hx3)
+
+        # stage 4
+        hx4 = self.stage4(hx)
+        hx = self.pool(hx4)
+
+        # stage 5
+        hx5 = self.stage5(hx)
+
+        x_01 = self.stage1d(torch.cat((hx1, _upsample_like(hx2, hx1)), 1))
+        x_11 = self.stage2d(torch.cat((hx2, _upsample_like(hx3, hx2)), 1))
+        x_21 = self.stage3d(torch.cat((hx3, _upsample_like(hx4, hx3)), 1))
+        x_31 = self.stage4d(torch.cat((hx4, _upsample_like(hx5, hx4)), 1))
+
+        x_02 = self.x_02(torch.cat((hx1, x_01, _upsample_like(x_11, x_01)), 1))
+        x_12 = self.x_12(torch.cat((hx2, x_11, _upsample_like(x_21, x_11)), 1))
+        x_22 = self.x_22(torch.cat((hx3, x_21, _upsample_like(x_31, x_21)), 1))
+
+        x_03 = self.x_03(torch.cat((hx1, x_01, x_02, _upsample_like(x_12, x_02)), 1))
+        x_13 = self.x_13(torch.cat((hx2, x_11, x_12, _upsample_like(x_22, x_12)), 1))
+
+        x_04 = self.x_04(torch.cat((hx1, x_01, x_02, x_03, _upsample_like(x_13, x_03)), 1))
+
+        out = self.out(x_04)
+
+        return out
 
 
 class U2KANetSmall(nn.Module):
@@ -362,6 +440,19 @@ def u2kagnet_bn(input_channels, num_classes, groups: int = 1, degree: int = 3, w
                              norm_layer=norm_layer, dim_reduction=dim_reduction)
 
     return U2KANet(conf_fun, conf_fun_first=conf_fun_first,
+                   in_ch=input_channels, out_ch=num_classes, width_factor=width_scale)
+
+def u2kagnetpp_bn(input_channels, num_classes, groups: int = 1, degree: int = 3, width_scale: int = 1,
+                dropout: float = 0.0, l1_decay: float = 0.0, affine: bool = True, dim_reduction: float = 8,
+                norm_layer: nn.Module = nn.InstanceNorm2d):
+    conf_fun = partial(bottleneck_kagn_conv3x3, degree=degree, groups=groups, dropout=dropout, l1_decay=l1_decay,
+                       affine=affine,
+                       norm_layer=norm_layer, dim_reduction=dim_reduction)
+    conf_fun_first = partial(bottleneck_kagn_conv3x3, degree=degree, groups=1, dropout=dropout, l1_decay=l1_decay,
+                             affine=affine,
+                             norm_layer=norm_layer, dim_reduction=dim_reduction)
+
+    return U2KANetPlusPlus(conf_fun, conf_fun_first=conf_fun_first,
                    in_ch=input_channels, out_ch=num_classes, width_factor=width_scale)
 
 
